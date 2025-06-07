@@ -71,7 +71,7 @@ async def main() -> int:
             placeholder.markdown("Thinking...")
             temp_msg = ""
             previous_total_length = 0 
-            update_threshold = 0 # update every 40 characters
+            update_threshold = 0 
 
             async for event in stream:
                 if event.type == "response.output_text.delta":
@@ -85,7 +85,6 @@ async def main() -> int:
                         except Exception as e:
                             print("Streaming Message Error:", e)
                         previous_total_length = len(temp_msg)
-                        # await asyncio.sleep(0.2)
                     
         try:
             placeholder.markdown(temp_msg)
