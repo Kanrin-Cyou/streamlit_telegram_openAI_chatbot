@@ -78,8 +78,7 @@ async def llm(user_id, user_message, hist, photo=None, tools=tools_description):
             model="o4-mini",
             input=medium,
             stream=True
-        )
-        stream = response.output_text        
+        )      
     else:
         medium.append({"role":"user","content":user_message})        
         response = await openai.responses.create(
