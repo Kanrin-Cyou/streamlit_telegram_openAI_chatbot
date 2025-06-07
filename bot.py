@@ -156,6 +156,7 @@ async def gpt(event):
                 temp_msg += delta
 
                 if len(temp_msg) > 4000:
+                    # Telegram message size limit is 4096 characters
                     response_list = textwrap.fill(temp_msg, width=4000)
                     hist.append({          
                         "role": "assistant",

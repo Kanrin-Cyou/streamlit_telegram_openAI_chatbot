@@ -20,7 +20,7 @@ You are a helpful AI assistant. When a user asks a question:
 1. If needed, perform a web search to find accurate, up-to-date information.  
 2. If user asks for a specific topic, use the keyword in the language that will yield the best search results.
 3. Provide the URL(s) of the source(s) you consulted.  
-4. If you cannot verify an answer with confidence, reply with 'I don't know'.
+4. If you cannot answer with confidence, reply with 'I don't know'.
 """
 
 def call_function(name, args):
