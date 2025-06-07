@@ -1,11 +1,12 @@
 import os
 import json
 import base64
+import asyncio
 import configparser  
 from telethon import TelegramClient, events
 from telethon.tl.custom import Button
 from PIL import Image
-from llm import llm
+from llm import llm, read_history, write_history
 import textwrap
 import time
 
@@ -66,16 +67,13 @@ async def start(event):
     verified_users = read_verified_users()
     
     if SENDER_ID in verified_users:
-        text = "Welcome Back！openAI API Bot 🤖 is ready。"
+        text = "Welcome Back! OpenAI API ChatBot 🤖 is ready."
         await client.send_message(SENDER_ID, text, parse_mode="md")
     else:
-        text = "Welcome to openAI API 🤖！\n\nPlease your password"
+        text = "Welcome to OpenAI API ChatBot 🤖！\n\nPlease input your password"
         await client.send_message(SENDER_ID, text, parse_mode="md")
 
 # Handling password verification
-#@client.on(events.NewMessage(pattern='@bot_name')) 
-#if you want to handle messages that mention the bot, so you can added it to a group chat.
-#However, you still need to send the password directly to the bot in a private chat.
 @client.on(events.NewMessage)
 async def handle_password(event):
     sender = await event.get_sender()
@@ -92,27 +90,31 @@ async def handle_password(event):
     if message == ACCESS_PASSWORD:
         verified_users.append(SENDER_ID)
         write_verified_users(verified_users)
-        text = "Correct Password！You now can use the Bot。😊"
+        text = "Correct Password! You now can use the Bot.😊"
         await client.send_message(SENDER_ID, text, parse_mode="md")
     else:
-        text = "Wrong Passwrod。Please try again or contact bot owner。"
+        text = "Wrong Passwrod. Please try again or contact bot owner."
         await client.send_message(SENDER_ID, text, parse_mode="md")
 
 
 #
 # define the main message handler
 #
+#@client.on(events.NewMessage(pattern='@bot_name')) 
+#if you want to handle messages that mention the bot, so you can added it to a group chat.
+#However, you still need to send the password directly to the bot in a private chat.
 @client.on(events.NewMessage)
 async def gpt(event):
-    try:
-        
+    try:        
         sender = await event.get_sender()
         SENDER = sender.id
         CHAT_ID = event.message.peer_id
         photo = None
 
+        hist = read_history(CHAT_ID)
+
         if not is_user_verified(SENDER):
-            text = "Please verify tyour password first, send /start to start。"
+            text = "Please verify your password first, send /start to start."
             await client.send_message(SENDER, text, parse_mode="md")
             return
         
@@ -134,20 +136,55 @@ async def gpt(event):
                 request = request + reply.raw_text
         
         start = time.time()
-        response_text = await llm(str(CHAT_ID), request, photo)
+        stream = await llm(str(CHAT_ID), request, hist, photo)
         end = time.time()
-        print(f"llm processing time is ${end-start}")
+        
+        print("---")
+        print(f"Starting Response takes ${end-start}s")
+        print("---")
 
-        if(len(response_text) > 4000):
-            response_list = textwrap.wrap(response_text, width=4000)
-            await session.edit(response_list[0], parse_mode="md")
-            for i in range(1, len(response_list)):
-                await client.send_message(CHAT_ID, response_list[i], parse_mode="md")
-        else:
-            await session.edit(response_text, parse_mode="md")
+        temp_msg = ""
+        previous_total_length = 0 
+        update_threshold = 40 # update every 40 characters
+
+        async for event in stream:
+            if event.type == "response.output_text.delta":
+                delta = event.delta
+                if delta is None:
+                    delta = ""
+                temp_msg += delta
+
+                if len(temp_msg) > 4000:
+                    response_list = textwrap.fill(temp_msg, width=4000)
+                    hist.append({          
+                        "role": "assistant",
+                        "content": response_list[0]
+                    })
+                    temp_msg = response_list[1]
+                    session = await client.send_message(CHAT_ID, " ", parse_mode="md")                                    
+
+                if len(temp_msg) - previous_total_length >= update_threshold:
+                    try:
+                        await session.edit(temp_msg)
+                    except Exception as e:
+                        print("Streaming Message Error:", e)
+                    previous_total_length = len(temp_msg)
+                    await asyncio.sleep(0.5)
+                
+        try:
+            await session.edit(temp_msg)
+        except Exception as e:
+            print("final update failed:", e)        
+
+        hist.append({          
+            "role": "assistant",
+            "content": temp_msg
+        })            
+
+        write_history(CHAT_ID, hist)
         
     except Exception as e:
-        await client.send_message(CHAT_ID, f"Sorry, error：{str(e)}", parse_mode="md")
+        await client.send_message(CHAT_ID, f"Sorry, error: {str(e)}", parse_mode="md")
 
 if __name__ == '__main__':
     print("Bot Started!")

@@ -2,6 +2,7 @@
 import os
 import json
 import time
+import asyncio
 from openai import AsyncOpenAI
 from tools.tools_description import tools_description
 from tools.general_utils import get_weather, get_current_time, web_crawler
@@ -53,20 +54,17 @@ def write_history(user_id: str, hist: list):
         json.dump(hist,f,indent=2,ensure_ascii=False)
 
 
-async def llm(user_id, user_message, photo=None, tools=tools_description):    
-    start = time.time()
-    answer = ""
-    hist = read_history(user_id)
-    while len(hist) >= 8:
-        hist.pop(1)
+async def llm(user_id, user_message, hist, photo=None, tools=tools_description):    
     
+    medium = hist.copy()
+
     hist.append({
         "role": "system",
         "content": f"Current Tokyo time is {get_current_time()}",
     })
     
     if photo is not None:
-        hist.append({
+        medium.append({
             "role": "user",
             "content": [
                 { "type": "input_text", "text": user_message},
@@ -76,22 +74,20 @@ async def llm(user_id, user_message, photo=None, tools=tools_description):
                 },
             ],
         })
-        response = await openai.responses.create(
+        stream = await openai.responses.create(
             model="o4-mini",
-            input=hist,
+            input=medium,
+            stream=True
         )
-        answer = response.output_text        
+        stream = response.output_text        
     else:
-        hist.append({"role":"user","content":user_message})
-        medium = hist.copy()
+        medium.append({"role":"user","content":user_message})        
         response = await openai.responses.create(
             model="gpt-4.1-mini",
-            input=hist,
+            input=medium,
             tools=tools,
         )
         
-        e1 = time.time()
-        print("Function Tool choice takes", e1-start, "seconds!")
         if (hasattr(response.output[0],"arguments")):
             for tool_call in response.output:
                 if tool_call.type != "function_call":
@@ -109,18 +105,11 @@ async def llm(user_id, user_message, photo=None, tools=tools_description):
                     "call_id": tool_call.call_id,
                     "output": str(result)
                 })
-            print("Proccessing After Tool Call")
             
-        responses_2 = await openai.responses.create(
+        stream = await openai.responses.create(
             model="o4-mini",
             input=medium,
-        )
-        answer = responses_2.output_text
-            
-        hist.append({"role":"assistant","content":answer})    
-        write_history(user_id, hist)
-        
-    end = time.time()
-    print("Total took", end-start, "seconds!")
+            stream=True
+        )                
     
-    return answer
+    return stream
