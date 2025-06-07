@@ -1,0 +1,5 @@
+version: '3'
+services:
+  telbot:
+    image: gptbot:latest
+    command: python -u ./bot.py
