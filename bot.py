@@ -119,7 +119,8 @@ async def gpt(event):
             return
         
         request = event.raw_text        
-
+        # if you use @bot_name as a trigger, remove it before processing the request
+        # request = request.removeprefix('@bot_name')
         print(request)
 
         if(request==ACCESS_PASSWORD):
