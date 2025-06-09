@@ -57,8 +57,8 @@ async def hist_evaluate(hist_message, current_request):
         Input:
         hist_message (historical information): "{hist_message}"
         current_request (current user request): "{current_request}"
-
-        Please determine whether the history contains information that is relevant to or helpful for answering the current_request.
+        
+        Current time is {get_current_time}. Please determine whether the history contains information that is relevant to or helpful for answering the current_request, time should be considered.
         If it is relevant, output only:
         True
         If it is not relevant, output only:
@@ -109,7 +109,6 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
     print("---")
     print("evaluated_results")
     print(f"Cost:{round(e1-start,2)}s")
-    print(medium)
     print("---")
     
     prompt = """

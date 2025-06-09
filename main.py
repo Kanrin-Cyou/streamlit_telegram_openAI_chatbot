@@ -2,6 +2,7 @@ import streamlit as st
 import asyncio
 import time
 from llm import llm, encode_image, read_history, write_history
+from tools.general_utils import get_current_time
 import sys
 from io import BytesIO
 import base64
@@ -109,7 +110,7 @@ async def main() -> int:
             user_message,
             {          
                 "role": "assistant",
-                "content": temp_msg
+                "content": f"Time:{get_current_time()} \n {temp_msg}"
             }
         ])
 
@@ -118,5 +119,5 @@ async def main() -> int:
 if __name__ == "__main__":
     
     sys.exit(asyncio.run(main()))
-    
+
 # streamlit run main.py

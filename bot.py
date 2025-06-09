@@ -7,6 +7,7 @@ from telethon import TelegramClient, events
 from telethon.tl.custom import Button
 from PIL import Image
 from llm import llm, read_history, write_history
+from tools.general_utils import get_current_time
 import textwrap
 import time
 
@@ -201,7 +202,7 @@ async def gpt(event):
             user_message,
             {          
                 "role": "assistant",
-                "content": response
+                "content": f"Time:{get_current_time()} \n {response}"
             }
         ])            
 
