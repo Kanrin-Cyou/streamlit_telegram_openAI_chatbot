@@ -83,8 +83,7 @@ async def hist_evaluate(hist_message, current_request):
         return False
 
 async def llm(user_id, user_message, hist_input, photo=None, tools=tools_description):    
-        
-    medium = []    
+          
     hist = copy.deepcopy(hist_input)[-12:]
     
     hist_record_pairs = []
@@ -97,6 +96,7 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
     print("---")
 
     #processing long time history
+    long_term_memory = []
     if (len(hist_record_pairs) > 3):
         long_time_pairs = hist_record_pairs[:-3]
         
@@ -110,7 +110,7 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
                             if item["type"] == "input_image":
                                 photo = encode_image(item["image_url"])
                                 item["image_url"] = f"data:image/jpeg;base64,{photo}"
-                    medium.append(record)        
+                    long_term_memory.append(record)        
         
         start = time.time()
         coros_hist_evaluation = [evaluate_content(record_pair, user_message) for record_pair in long_time_pairs]
@@ -121,6 +121,7 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
         print(f"Cost:{round(e1-start,2)}s")
         print("---")
 
+    short_term_memory = []
     #processing short time history
     short_time_pairs = hist_record_pairs[-3:] 
     for pairs in short_time_pairs:
@@ -130,7 +131,7 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
                     if item["type"] == "input_image":
                         photo = encode_image(item["image_url"])
                         item["image_url"] = f"data:image/jpeg;base64,{photo}"
-            medium.append(record) 
+            short_term_memory.append(record) 
     
     print("---")
     print(hist_record_pairs)
@@ -144,19 +145,21 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
     3. Provide the URL(s) of the source(s) you consulted.  
     4. If you cannot answer with confidence, reply with 'I don't know'.
     """
+
+    prompt_messages = []
     
-    medium.append({
+    prompt_messages.append({
         "role": "system",
         "content": prompt,
     })
 
-    medium.append({
+    prompt_messages.append({
         "role": "system",
         "content": f"Current Tokyo time is {get_current_time()}",
     })
     
     if photo is not None:
-        medium.append({
+        prompt_messages.append({
             "role": "user",
             "content": [
                 { "type": "input_text", "text": user_message},
@@ -168,14 +171,14 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
         })
         stream = await openai.responses.create(
             model="o4-mini",
-            input=medium,
+            input=prompt_messages,
             stream=True
         )      
     else:
-        medium.append({"role":"user","content":user_message})        
+        prompt_messages.append({"role":"user","content":user_message})        
         response = await openai.responses.create(
             model="gpt-4.1-mini",
-            input=medium,
+            input=prompt_messages,
             tools=tools,
         )
         
@@ -183,7 +186,7 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
             for tool_call in response.output:
                 if tool_call.type != "function_call":
                     continue
-                medium.append(tool_call)
+                prompt_messages.append(tool_call)
                 name = tool_call.name
                 print(f"Calling function: {name} with arguments: {tool_call.arguments}")
                 args = json.loads(tool_call.arguments)
@@ -191,7 +194,7 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
                     result = await call_function(name, args)                                                         
                 else:
                     result = call_function(name, args)
-                medium.append({
+                prompt_messages.append({
                     "type": "function_call_output",
                     "call_id": tool_call.call_id,
                     "output": str(result)
@@ -199,7 +202,7 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
             
         stream = await openai.responses.create(
             model="o4-mini",
-            input=medium,
+            input= long_term_memory+ short_term_memory + prompt_messages,
             stream=True
         )                
     
