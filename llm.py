@@ -75,6 +75,7 @@ async def hist_evaluate(hist_message, current_request):
     ]
     response = await openai.responses.create(
         model="gpt-4.1-nano",
+        temperature=0.3,
         input=init_chat,
     )
     if response.output_text.lower() in ["true", "yes", "relevant"]:
@@ -127,10 +128,14 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
     for pairs in short_time_pairs:
         for record in pairs:
             if type(record["content"]) == list:
-                for item in record["content"]:                        
-                    if item["type"] == "input_image":
-                        photo = encode_image(item["image_url"])
-                        item["image_url"] = f"data:image/jpeg;base64,{photo}"
+                if_relevant = await hist_evaluate(str(record), user_message)
+                if if_relevant:
+                    for item in record["content"]:                        
+                        if item["type"] == "input_image":
+                            photo = encode_image(item["image_url"])
+                            item["image_url"] = f"data:image/jpeg;base64,{photo}"
+                else:
+                    continue
             short_term_memory.append(record) 
     
     print("---")
@@ -178,6 +183,7 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
         prompt_messages.append({"role":"user","content":user_message})        
         response = await openai.responses.create(
             model="gpt-4.1-mini",
+            temperature=0.3,
             input=prompt_messages,
             tools=tools,
         )

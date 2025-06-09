@@ -165,7 +165,7 @@ async def gpt(event):
 
         temp_msg = ""
         previous_total_length = 0 
-        update_threshold = 40 # update every 40 characters
+        update_threshold = 100 # update every 100 characters
 
         async for event in stream:
             if event.type == "response.output_text.delta":
