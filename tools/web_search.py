@@ -35,6 +35,7 @@ async def website_evaluate(web_snippet, keywords, question):
     ]
     response = await openai.responses.create(
         model="gpt-4.1-nano",
+        temperature=0.3,
         input=init_chat,
     )
     if response.output_text.lower() in ["true", "yes", "relevant"]:

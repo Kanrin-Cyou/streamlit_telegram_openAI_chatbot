@@ -80,7 +80,7 @@ async def main() -> int:
             stream = await llm(user_id, user_input.text, st.session_state.chat_history, photo)     
             end = time.time()            
             print("---")
-            print(f"Starting Response takes ${end-start}s")
+            print(f"Starting Response takes {end-start}s")
             print("---")
             placeholder = st.empty()
             placeholder.markdown("Thinking...")
