@@ -133,8 +133,26 @@ async def gpt(event):
                 file_path = await reply.download_media()
                 file_path = ensure_supported_image(file_path)
                 photo = encode_image(file_path)
+                user_message = {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": request},
+                        {"type": "input_image",
+                         "image_url": file_path,
+                        }
+                    ],
+                }
             else:
                 request = request + reply.raw_text
+                user_message = {
+                    "role": "user",
+                    "content": request
+                }
+        else:
+            user_message = {
+                "role": "user",
+                "content": request
+            }
         
         start = time.time()
         stream = await llm(str(CHAT_ID), request, hist, photo)
@@ -154,15 +172,12 @@ async def gpt(event):
                 if delta is None:
                     delta = ""
                 temp_msg += delta
-
+                msg_queue = []
                 if len(temp_msg) > 4000:
                     # Telegram message size limit is 4096 characters
                     response_list = textwrap.fill(temp_msg, width=4000)
-                    hist.append({          
-                        "role": "assistant",
-                        "content": response_list[0]
-                    })
-                    temp_msg = response_list[1]
+                    msg_queue.append(response_list[0])                                      
+                    temp_msg = response_list[1]                    
                     session = await client.send_message(CHAT_ID, " ", parse_mode="md")                                    
 
                 if len(temp_msg) - previous_total_length >= update_threshold:
@@ -175,13 +190,20 @@ async def gpt(event):
                 
         try:
             await session.edit(temp_msg)
+            msg_queue.append(temp_msg)
         except Exception as e:
             print("final update failed:", e)        
 
-        hist.append({          
-            "role": "assistant",
-            "content": temp_msg
-        })            
+        response = ""
+        for item in msg_queue:
+            response = response + item
+        hist.extend([
+            user_message,
+            {          
+                "role": "assistant",
+                "content": response
+            }
+        ])            
 
         write_history(CHAT_ID, hist)
         
