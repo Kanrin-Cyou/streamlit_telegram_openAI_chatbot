@@ -58,7 +58,9 @@ async def hist_evaluate(hist_message, current_request):
         hist_message (historical information): "{hist_message}"
         current_request (current user request): "{current_request}"
         
-        Current time is {get_current_time}. Please determine whether the history contains information that is relevant to or helpful for answering the current_request, time should be considered.
+        Current time is {get_current_time}.
+        Please determine whether the history contains information that is relevant to or helpful for answering the current_request. 
+        Time also should be considered, if the history is too old, it may not be relevant.
         If it is relevant, output only:
         True
         If it is not relevant, output only:
@@ -83,34 +85,58 @@ async def hist_evaluate(hist_message, current_request):
 async def llm(user_id, user_message, hist_input, photo=None, tools=tools_description):    
         
     medium = []    
-    hist = copy.deepcopy(hist_input)[-10:]
+    hist = copy.deepcopy(hist_input)[-12:]
     
-    hist_pairs = []
+    hist_record_pairs = []
     for i in range(0, len(hist), 2):
         pair = hist[i:i+2]
-        hist_pairs.append(pair)
+        hist_record_pairs.append(pair)
+
+    print("---")
+    print(hist_record_pairs)
+    print("---")
+
+    #processing long time history
+    if (len(hist_record_pairs) > 3):
+        long_time_pairs = hist_record_pairs[:-3]
         
-    async def evaluate_content(hist_pair, user_message):
-        if_relevant = await hist_evaluate(str(hist_pair), user_message)
-        print(if_relevant, hist_pair)            
-        if if_relevant:
-            for pair in hist_pair:
-                if type(pair["content"]) == list:
-                    for item in pair["content"]:                        
-                        if item["type"] == "input_image":
-                            photo = encode_image(item["image_url"])
-                            item["image_url"] = f"data:image/jpeg;base64,{photo}"
-                medium.append(pair)        
+        async def evaluate_content(record_pair, user_message):
+            if_relevant = await hist_evaluate(str(record_pair), user_message)
+            print(if_relevant, record_pair)            
+            if if_relevant:
+                for record in record_pair:
+                    if type(record["content"]) == list:
+                        for item in record["content"]:                        
+                            if item["type"] == "input_image":
+                                photo = encode_image(item["image_url"])
+                                item["image_url"] = f"data:image/jpeg;base64,{photo}"
+                    medium.append(record)        
+        
+        start = time.time()
+        coros_hist_evaluation = [evaluate_content(record_pair, user_message) for record_pair in long_time_pairs]
+        await asyncio.gather(*coros_hist_evaluation)
+        e1 = time.time()
+        print("---")
+        print("evaluated_results")
+        print(f"Cost:{round(e1-start,2)}s")
+        print("---")
+
+    #processing short time history
+    short_time_pairs = hist_record_pairs[-3:] 
+    for pairs in short_time_pairs:
+        for record in pairs:
+            if type(record["content"]) == list:
+                for item in record["content"]:                        
+                    if item["type"] == "input_image":
+                        photo = encode_image(item["image_url"])
+                        item["image_url"] = f"data:image/jpeg;base64,{photo}"
+            medium.append(record) 
     
-    start = time.time()
-    coros_hist_evaluation = [evaluate_content(hist_pair, user_message) for hist_pair in hist_pairs]
-    await asyncio.gather(*coros_hist_evaluation)
-    e1 = time.time()
     print("---")
-    print("evaluated_results")
-    print(f"Cost:{round(e1-start,2)}s")
+    print(hist_record_pairs)
     print("---")
-    
+
+
     prompt = """
     You are a helpful AI assistant. When a user asks a question:
     1. If needed, perform a web search to find accurate, up-to-date information.  
