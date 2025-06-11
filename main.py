@@ -127,7 +127,7 @@ async def main() -> int:
           
         with st.chat_message("AI"):
             start = time.time()
-            stream = await llm(st.session_state.active_chat, user_input.text, st.session_state.chat_history, photo)     
+            stream, tools = await llm(st.session_state.active_chat, user_input.text, st.session_state.chat_history, photo)     
             end = time.time()            
             print("---")
             print(f"Starting Response takes {end-start}s")
@@ -152,7 +152,7 @@ async def main() -> int:
                         previous_total_length = len(temp_msg)
                     
             try:
-                temp_msg = temp_msg + "\n\n" + f"[Answered at: {get_current_time()}]"
+                temp_msg = temp_msg + "\n\n" + f"⌚️ Answered at: {get_current_time()}" + "\n\n" + f"🔌 Module Used: {str(tools)}"
                 placeholder.markdown(temp_msg)
             except Exception as e:
                 print("final waiting update failed:", e)

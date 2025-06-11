@@ -86,6 +86,10 @@ async def hist_evaluate(hist_message, current_request):
 async def llm(user_id, user_message, hist_input, photo=None, tools=tools_description):    
           
     hist = copy.deepcopy(hist_input)[-12:]
+
+    for item in hist:
+        if type(item["content"]) == str:
+            item["content"] = item["content"].split("🔌 Module Used:")[0]
     
     hist_record_pairs = []
     for i in range(0, len(hist), 2):
@@ -152,6 +156,7 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
     """
 
     prompt_messages = []
+    tool_used = []
     
     prompt_messages.append({
         "role": "system",
@@ -173,43 +178,42 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
                     "image_url": f"data:image/jpeg;base64,{photo}",
                 },
             ],
-        })
-        stream = await openai.responses.create(
-            model="o4-mini",
-            input=prompt_messages,
-            stream=True
-        )      
+        }) 
     else:
-        prompt_messages.append({"role":"user","content":user_message})        
-        response = await openai.responses.create(
-            model="gpt-4.1-mini",
-            temperature=0.3,
-            input=prompt_messages,
-            tools=tools,
-        )
-        
-        if (hasattr(response.output[0],"arguments")):
-            for tool_call in response.output:
-                if tool_call.type != "function_call":
-                    continue
-                prompt_messages.append(tool_call)
-                name = tool_call.name
-                print(f"Calling function: {name} with arguments: {tool_call.arguments}")
-                args = json.loads(tool_call.arguments)
-                if name == "web_search":
-                    result = await call_function(name, args)                                                         
-                else:
-                    result = call_function(name, args)
-                prompt_messages.append({
-                    "type": "function_call_output",
-                    "call_id": tool_call.call_id,
-                    "output": str(result)
-                })
-            
-        stream = await openai.responses.create(
-            model="o4-mini",
-            input= long_term_memory+ short_term_memory + prompt_messages,
-            stream=True
-        )                
+        prompt_messages.append({"role":"user","content":user_message})  
+
+    response = await openai.responses.create(
+        model="gpt-4.1-mini",
+        temperature=0.1,
+        input= long_term_memory + short_term_memory + prompt_messages,
+        tools=tools,
+    )
     
-    return stream
+    if (hasattr(response.output[0],"arguments")):
+        tool_used = []
+        for tool_call in response.output:
+            if tool_call.type != "function_call":
+                continue
+            prompt_messages.append(tool_call)
+            name = tool_call.name
+            tool_used.append({f"{name}":f"{tool_call.arguments}"})
+            print(f"Calling function: {name} with arguments: {tool_call.arguments}")
+            args = json.loads(tool_call.arguments)
+            if name == "web_search":
+                result = await call_function(name, args)                                                         
+            else:
+                result = call_function(name, args)
+            prompt_messages.append({
+                "type": "function_call_output",
+                "call_id": tool_call.call_id,
+                "output": str(result)
+            })
+        
+    stream = await openai.responses.create(
+        model="gpt-4.1-mini",
+        input= long_term_memory + short_term_memory + prompt_messages,
+        temperature=0.3,
+        stream=True
+    )                
+    
+    return stream, tool_used

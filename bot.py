@@ -156,7 +156,7 @@ async def gpt(event):
             }
         
         start = time.time()
-        stream = await llm(str(CHAT_ID), request, hist, photo)
+        stream, tools = await llm(str(CHAT_ID), request, hist, photo)
         end = time.time()
         
         print("---")
@@ -190,7 +190,13 @@ async def gpt(event):
                     await asyncio.sleep(0.5)
                 
         try:
-            await session.edit(temp_msg)
+            temp_msg = temp_msg + "\n\n" + f"🔌 Module Used: {str(tools)}"
+            if len(temp_msg) > 4000:
+                response_list = textwrap.fill(temp_msg, width=4000)
+                await session.edit(response_list[0])
+                await client.send_message(CHAT_ID, response_list[1], parse_mode="md")   
+            else:                
+                await session.edit(temp_msg)
             msg_queue.append(temp_msg)
         except Exception as e:
             print("final update failed:", e)        
