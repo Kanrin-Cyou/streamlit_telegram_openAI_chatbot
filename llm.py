@@ -107,7 +107,7 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
         
         async def evaluate_content(record_pair, user_message):
             if_relevant = await hist_evaluate(str(record_pair), user_message)
-            print(if_relevant, record_pair)            
+            print(if_relevant)            
             if if_relevant:
                 for record in record_pair:
                     if type(record["content"]) == list:
@@ -142,9 +142,9 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
                     continue
             short_term_memory.append(record) 
     
-    print("---")
-    print(hist_record_pairs)
-    print("---")
+    # print("---")
+    # print(hist_record_pairs)
+    # print("---")
 
 
     prompt = """
@@ -182,32 +182,49 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
     else:
         prompt_messages.append({"role":"user","content":user_message})  
 
-    response = await openai.responses.create(
+    stream = await openai.responses.create(
         model="gpt-4.1-mini",
         temperature=0.1,
         input= long_term_memory + short_term_memory + prompt_messages,
+        stream=True,
         tools=tools,
     )
+
+    final_tool_calls = []
+    async for event in stream:
+        if event.type == 'response.content_part.added':
+            return stream, tool_used
+        if event.type == 'response.output_item.added':
+            final_tool_calls.append(event.item)
+        elif event.type == 'response.function_call_arguments.delta':
+            index = event.output_index
+            if final_tool_calls[index]:
+                final_tool_calls[index].arguments += event.delta
     
-    if (hasattr(response.output[0],"arguments")):
-        tool_used = []
-        for tool_call in response.output:
-            if tool_call.type != "function_call":
-                continue
-            prompt_messages.append(tool_call)
-            name = tool_call.name
-            tool_used.append({f"{name}":f"{tool_call.arguments}"})
-            print(f"Calling function: {name} with arguments: {tool_call.arguments}")
-            args = json.loads(tool_call.arguments)
-            if name == "web_search":
-                result = await call_function(name, args)                                                         
-            else:
-                result = call_function(name, args)
-            prompt_messages.append({
-                "type": "function_call_output",
-                "call_id": tool_call.call_id,
-                "output": str(result)
-            })
+    print(f"Final Tool call: {final_tool_calls}")
+
+    tool_used = []
+    for tool_call in final_tool_calls:
+
+        call_id = tool_call.call_id
+        name = tool_call.name
+        arguments = tool_call.arguments
+
+        args = json.loads(arguments)
+        if name == "web_search":
+            result = await call_function(name, args)                                                         
+        else:
+            result = call_function(name, args)
+        
+        prompt_messages.append(tool_call)
+        prompt_messages.append({
+            "type": "function_call_output",
+            "call_id": call_id,
+            "output": str(result)
+        })
+
+        tool_used.append({f"{name}":f"{arguments}"})
+        print(f"Calling function: {name} with arguments: {arguments}")
         
     stream = await openai.responses.create(
         model="gpt-4.1-mini",
