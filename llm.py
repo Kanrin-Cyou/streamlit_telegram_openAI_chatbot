@@ -172,8 +172,7 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
     1. If needed, perform a web search to find accurate, up-to-date information.  
     2. If user asks for a specific topic, use the keyword in the language that will yield the best search results.
     3. Provide the URL(s) of the source(s) you consulted.  
-    4. If user asks for server status, keep the original result from function call in your response.
-    5. If you cannot answer with confidence, reply with 'I don't know'.
+    4. If you cannot answer with confidence, reply with 'I don't know'.
     """
 
     prompt_messages = []
