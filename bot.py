@@ -6,7 +6,7 @@ import configparser
 from telethon import TelegramClient, events
 from telethon.tl.custom import Button
 from PIL import Image
-from llm import llm, read_history, write_history
+from llm import llm, read_history, write_history, tool_msg_beautify
 from tools.general_utils import get_current_time
 import textwrap
 import time
@@ -190,7 +190,7 @@ async def gpt(event):
                     await asyncio.sleep(0.5)
                 
         try:
-            temp_msg = temp_msg + "\n\n" + f"🔌 Module Used: {str(tools)}"
+            temp_msg = temp_msg + "\n\n" + f"🔌 Module Used: {tool_msg_beautify(tools)}"
             if len(temp_msg) > 4000:
                 response_list = textwrap.fill(temp_msg, width=4000)
                 await session.edit(response_list[0])

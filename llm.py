@@ -17,6 +17,25 @@ config.read('config.ini')
 OPENAI_API_KEY = config.get('default', 'OPENAI_API_KEY')
 openai = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
+TOOL_MAPPING = {
+    "get_weather":"🌤️ Weather",
+    "get_current_time":"⌚️ Time",
+    "web_search":"🚀 Search Engine",
+    "web_crawler":"📦 Web Crawler",
+    "ytb_transcribe":"📺 Youtube Transcribe"
+}
+
+def tool_msg_beautify(tools):
+    new_msg = ""
+    for tool in tools:
+        print(tool)
+        name = tool["name"]
+        arguments = tool["arguments"]
+        if name in TOOL_MAPPING:
+            name = TOOL_MAPPING[name]
+        new_msg = new_msg + "\n\n" + name + "\n\n" + "==>" + "💾 Input: "+ arguments  
+    return new_msg
+
 def call_function(name, args):
     if name == "get_weather":
         return get_weather(**args)
@@ -97,6 +116,7 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
         hist_record_pairs.append(pair)
 
     print("---")
+    print("hist_record_pairs")
     print(hist_record_pairs)
     print("---")
 
@@ -152,7 +172,8 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
     1. If needed, perform a web search to find accurate, up-to-date information.  
     2. If user asks for a specific topic, use the keyword in the language that will yield the best search results.
     3. Provide the URL(s) of the source(s) you consulted.  
-    4. If you cannot answer with confidence, reply with 'I don't know'.
+    4. If user asks for server status, keep the original result from function call in your response.
+    5. If you cannot answer with confidence, reply with 'I don't know'.
     """
 
     prompt_messages = []
@@ -189,7 +210,7 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
         stream=True,
         tools=tools,
     )
-
+    
     final_tool_calls = []
     async for event in stream:
         if event.type == 'response.content_part.added':
@@ -223,7 +244,7 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
             "output": str(result)
         })
 
-        tool_used.append({f"{name}":f"{arguments}"})
+        tool_used.append({"name":f"{name}", "arguments":f"{arguments}"})
         print(f"Calling function: {name} with arguments: {arguments}")
         
     stream = await openai.responses.create(
