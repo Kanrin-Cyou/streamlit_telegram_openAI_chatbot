@@ -163,7 +163,9 @@ async def main() -> int:
                             previous_total_length = len(temp_msg)
                         
                 try:
-                    temp_msg = temp_msg + "\n\n" + f"⌚️ Answered at: {get_current_time()}" + "\n\n" + f"🔌 Module Used: {tool_msg_beautify(tools)}"
+                    if len(tools) > 0:
+                        temp_msg = temp_msg + "\n\n" + f"🔌 Module Used: {tool_msg_beautify(tools)}"
+                    # temp_msg = temp_msg + "\n\n" + f"⌚️ Answered at: {get_current_time()}" + "\n\n" + f"🔌 Module Used: {tool_msg_beautify(tools)}"
                     placeholder.markdown(temp_msg)
                 except Exception as e:
                     print("finalwaiting update failed:", e)

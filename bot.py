@@ -190,7 +190,8 @@ async def gpt(event):
                     await asyncio.sleep(0.5)
                 
         try:
-            temp_msg = temp_msg + "\n\n" + f"🔌 Module Used: {tool_msg_beautify(tools)}"
+            if len(tools) > 0:
+                temp_msg = temp_msg + "\n\n" + f"🔌 Module Used: {tool_msg_beautify(tools)}"
             if len(temp_msg) > 4000:
                 response_list = textwrap.fill(temp_msg, width=4000)
                 await session.edit(response_list[0])
