@@ -48,10 +48,13 @@ async def main() -> int:
         st.session_state.chatbox_names = read_chat_list()
     if 'active_chat' not in st.session_state:
         st.session_state.active_chat = st.session_state.chatbox_names[0]
+    if 'code_mode' not in st.session_state:
+        st.session_state.code_mode = False
 
     # 2. Sidebar: list chatbox name items as a column of buttons
     with st.sidebar:
         new_chat_name = st.text_input("New Chat Name")
+
         if st.button("Create New Chat", use_container_width=True):
             slate.empty()
             st.session_state.chatbox_names.append(new_chat_name)
@@ -68,7 +71,8 @@ async def main() -> int:
             slate.empty()
             st.session_state.active_chat = option
             st.session_state.chat_history = read_history(st.session_state.active_chat)  
-            st.rerun()          
+            st.rerun()      
+
         if st.button("Delete the Chat", use_container_width=True):
             slate.empty()
             delete_chat(option)
@@ -76,6 +80,12 @@ async def main() -> int:
             st.session_state.active_chat = st.session_state.chatbox_names[0]
             st.session_state.chat_history = read_history(st.session_state.active_chat)
             st.rerun()
+
+        agree = st.checkbox("Reasoning Mode")
+        if agree:
+            st.session_state.code_mode = True
+        else:
+            st.session_state.code_mode = False
                    
     user_input = st.chat_input("Type a message...", accept_file=True, file_type=["jpg", "jpeg", "png"]) 
     
@@ -140,7 +150,7 @@ async def main() -> int:
                 placeholder = st.empty()
                 placeholder.markdown("Thinking...")                    
                 start = time.time()
-                stream, tools = await llm(st.session_state.active_chat, user_input.text, st.session_state.chat_history, photo)     
+                stream, tools = await llm(st.session_state.active_chat, user_input.text, st.session_state.chat_history, photo, reasoning_mode=st.session_state.code_mode)                     
                 end = time.time()
                 print("---")
                 print(f"Starting Response takes {end-start}s")
@@ -163,9 +173,8 @@ async def main() -> int:
                             previous_total_length = len(temp_msg)
                         
                 try:
-                    if len(tools) > 0:
+                    if(len(tools)>0):
                         temp_msg = temp_msg + "\n\n" + f"🔌 Module Used: {tool_msg_beautify(tools)}"
-                    # temp_msg = temp_msg + "\n\n" + f"⌚️ Answered at: {get_current_time()}" + "\n\n" + f"🔌 Module Used: {tool_msg_beautify(tools)}"
                     placeholder.markdown(temp_msg)
                 except Exception as e:
                     print("finalwaiting update failed:", e)

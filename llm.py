@@ -102,7 +102,7 @@ async def hist_evaluate(hist_message, current_request):
     else:
         return False
 
-async def llm(user_id, user_message, hist_input, photo=None, tools=tools_description):    
+async def llm(user_id, user_message, hist_input, photo=None, tools=tools_description, reasoning_mode = False):    
           
     hist = copy.deepcopy(hist_input)[-12:]
 
@@ -166,13 +166,39 @@ async def llm(user_id, user_message, hist_input, photo=None, tools=tools_descrip
     # print(hist_record_pairs)
     # print("---")
 
+    if(reasoning_mode):        
+        prompt_messages = []
+        if photo is not None:
+            prompt_messages.append({
+                "role": "user",
+                "content": [
+                    { "type": "input_text", "text": user_message},
+                    {
+                        "type": "input_image",
+                        "image_url": f"data:image/jpeg;base64,{photo}",
+                    },
+                ],
+            }) 
+        else:
+            prompt_messages.append({"role":"user","content":user_message}) 
+        
+        stream = await openai.responses.create(
+            model="o4-mini",
+            input=long_term_memory + short_term_memory + prompt_messages,
+            reasoning={
+                "effort": "high"
+            },
+            stream=True
+        )
+        return stream, []       
 
     prompt = """
     You are a helpful AI assistant. When a user asks a question:
     1. If needed, perform a web search to find accurate, up-to-date information.  
     2. If user asks for a specific topic, use the keyword in the language that will yield the best search results.
     3. Provide the URL(s) of the source(s) you consulted.  
-    4. If you cannot answer with confidence, reply with 'I don't know'.
+    4. If user asks for server status, keep the original result from function call in your response.
+    5. If you cannot answer with confidence, reply with 'I don't know'.
     """
 
     prompt_messages = []
