@@ -3,12 +3,11 @@ from tools.general_utils import async_web_crawler
 from openai import AsyncOpenAI
 import asyncio
 import time
+import os
 
-import configparser
-config = configparser.ConfigParser()
-config.read('config.ini')
-OPENAI_API_KEY = config.get('default', 'OPENAI_API_KEY')
-openai = AsyncOpenAI(api_key=OPENAI_API_KEY)
+from dotenv import load_dotenv
+load_dotenv()
+openai = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 ddgs = DDGS()
 max_results = 8

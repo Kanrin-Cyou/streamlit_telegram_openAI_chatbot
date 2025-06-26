@@ -2,11 +2,13 @@ import os
 import json
 import base64
 import asyncio
-import configparser  
+from dotenv import load_dotenv
 from telethon import TelegramClient, events
 from telethon.tl.custom import Button
 from PIL import Image
-from llm import llm, read_history, write_history, tool_msg_beautify
+from llm import llm
+from hist import read_history, write_history, encode_image
+from tools.tools_description import tool_msg_beautify
 from tools.general_utils import get_current_time
 import textwrap
 import time
@@ -14,14 +16,15 @@ import time
 #
 # Configuration and init Telegram client
 #
-config = configparser.ConfigParser()
-config.read('config.ini')
-api_id = config.get('default', 'api_id')
-api_hash = config.get('default', 'api_hash')
-BOT_TOKEN = config.get('default', 'BOT_TOKEN')
-ACCESS_PASSWORD = config.get('default','ACCESS_PASSWORD')
 
-client = TelegramClient('gptsession', api_id, api_hash).start(bot_token=BOT_TOKEN)
+load_dotenv()
+ACCESS_PASSWORD = os.environ.get("ACCESS_PASSWORD")
+
+client = TelegramClient(
+    'gptsession', 
+    os.environ.get("api_id"), 
+    os.environ.get("api_hash")
+).start(bot_token=os.environ.get("BOT_TOKEN"))
 
 VERIFIED_USERS_FILE = 'verified_users.json'
 
@@ -156,7 +159,7 @@ async def gpt(event):
             }
         
         start = time.time()
-        stream, tools = await llm(str(CHAT_ID), request, hist, photo)
+        stream, tools = await llm(request, hist, photo)
         end = time.time()
         
         print("---")
@@ -190,8 +193,7 @@ async def gpt(event):
                     await asyncio.sleep(0.5)
                 
         try:
-            if len(tools) > 0:
-                temp_msg = temp_msg + "\n\n" + f"🔌 Module Used: {tool_msg_beautify(tools)}"
+            temp_msg = temp_msg + "\n\n" + f"🔌 Module Used: {tool_msg_beautify(tools)}"
             if len(temp_msg) > 4000:
                 response_list = textwrap.fill(temp_msg, width=4000)
                 await session.edit(response_list[0])

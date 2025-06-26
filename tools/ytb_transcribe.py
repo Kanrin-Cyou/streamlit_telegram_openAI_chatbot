@@ -6,13 +6,10 @@ import shutil
 import configparser
 from openai import OpenAI
 
-config = configparser.ConfigParser()
-config.read('config.ini')
-OPENAI_API_KEY = config.get('default', 'OPENAI_API_KEY')
+from dotenv import load_dotenv
+openai = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 def ytb_transcribe(url) -> str:
-    
-    gpt_client = OpenAI(api_key=OPENAI_API_KEY)
 
     tmpdir_audio = None
     tmpdir_script = None
@@ -35,7 +32,7 @@ def ytb_transcribe(url) -> str:
             for file_path in audio_files:
                 print("Transcribing audio file:")
                 with open(file_path, "rb") as audio_file:
-                    transcription = gpt_client.audio.transcriptions.create(
+                    transcription = openai.audio.transcriptions.create(
                         model="whisper-1",
                         file=audio_file
                     )

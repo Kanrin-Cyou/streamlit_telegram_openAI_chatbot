@@ -1,3 +1,38 @@
+from tools.general_utils import get_weather, get_current_time, web_crawler
+from tools.web_search import web_search
+from tools.ytb_transcribe import ytb_transcribe
+
+TOOL_MAPPING = {
+    "get_weather":"🌤️ Weather",
+    "get_current_time":"⌚️ Time",
+    "web_search":"🚀 Search Engine",
+    "web_crawler":"📦 Web Crawler",
+    "ytb_transcribe":"📺 Youtube Transcribe"
+}
+
+def tool_msg_beautify(tools):
+    new_msg = ""
+    for tool in tools:
+        print(tool)
+        name = tool["name"]
+        arguments = tool["arguments"]
+        if name in TOOL_MAPPING:
+            name = TOOL_MAPPING[name]
+        new_msg = new_msg + "\n\n" + "- " + name + "\n\n" + "\t\t -" + " 💾 Input: "+ arguments  
+    return new_msg
+
+def call_function(name, args):
+    if name == "get_weather":
+        return get_weather(**args)
+    if name == "get_current_time":
+        return get_current_time(**args)
+    if name == "web_search":
+        return web_search(**args)
+    if name == "web_crawler":
+        return web_crawler(**args)
+    if name == "ytb_transcribe":
+        return ytb_transcribe(**args)
+
 tools_description = [
     {
         "type": "function",
@@ -43,20 +78,6 @@ tools_description = [
     },
     "strict": True
     },
-    # {
-    #     "type": "function",
-    #     "name": "get_website_http_status",
-    #     "description": "Check if a website accessible by curl one website following the redirection.", 
-    #     "parameters": {
-    #         "type": "object",
-    #         "properties": {
-    #             "website_url": {"type": "string"}
-    #         },
-    #         "required": ["website_url"],
-    #         "additionalProperties": False
-    #     },
-    #     "strict": True
-    # },
     {
         "type": "function",
         "name": "web_crawler",
