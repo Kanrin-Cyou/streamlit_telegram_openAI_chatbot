@@ -1,0 +1,9 @@
+openai
+requests
+bs4
+telethon
+pillow
+aiohttp
+duckduckgo_search
+streamlit
+python-dotenv
