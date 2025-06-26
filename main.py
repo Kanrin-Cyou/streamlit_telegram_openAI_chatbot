@@ -83,8 +83,8 @@ async def main() -> int:
             st.rerun()
 
         def reasoning_check():
-            st.session_state.reasoning = st.session_state.reasoning_checkbox
             slate.empty()
+            st.session_state.reasoning = st.session_state.reasoning_checkbox
 
         st.checkbox(label="Reasoning Mode", key="reasoning_checkbox", on_change = reasoning_check)            
 
@@ -195,10 +195,10 @@ async def main() -> int:
                     )
                 
                 # formating the 
-                if "🧠 Reasoning" in reasoning_msg:
-                    history_content = reasoning_msg + "\n\n" + output_msg
+                if len(reasoning_msg) > 20:
+                    history_content = reasoning_msg + "\n\n" + output_msg                                 
                 else:
-                    history_content = output_msg
+                    history_content = output_msg       
 
             st.session_state.chat_history.extend([
                 hist_user_message,
