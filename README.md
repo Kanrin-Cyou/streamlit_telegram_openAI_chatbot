@@ -10,7 +10,7 @@ Key features include:
 ## Running the Telegram Bot
 1. Install Docker if you haven’t already:  https://docs.docker.com/get-docker/
 2. Clone this repository to your local machine:
-3. Open config.ini and fill in your credentials:
+3. Open .env and fill in your credentials:
 
     - APP_ID and API_HASH Can be found in: https://my.telegram.org/auth    
     - BOT_TOKEN: Search @BotFather in Telegram and follow the instructions
@@ -35,7 +35,7 @@ Then you may add it to a group chat, However, you still need to send the passwor
 `brew install yt-dlp ffmpeg` 
 3. Install the virutal environment:
 `python3 -m venv .venv`
-4. Change the config.ini file with your APIKEY: 
+4. Change the .env file with your APIKEY: 
     -> OPENAI_API_KEY Obtain from OpenAI: https://platform.openai.com/
 5. Install dependencies:
 `pip3 install -r requirements.txt`
