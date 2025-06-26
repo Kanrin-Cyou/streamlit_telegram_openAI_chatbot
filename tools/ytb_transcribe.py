@@ -145,7 +145,7 @@ def download_youtube_subtitles(
 
     if p.returncode != 0:
         shutil.rmtree(tmpdir, ignore_errors=True)
-        raise RuntimeError(f"字幕下载失败：\n{p.stderr.strip()}")
+        raise RuntimeError(f"Fail to Download: \n{p.stderr.strip()}")
 
     files = []
     for fn in os.listdir(tmpdir):
