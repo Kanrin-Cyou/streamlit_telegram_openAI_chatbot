@@ -3,7 +3,6 @@ import re
 import subprocess
 import tempfile
 import shutil
-import configparser
 from openai import OpenAI
 
 from dotenv import load_dotenv
