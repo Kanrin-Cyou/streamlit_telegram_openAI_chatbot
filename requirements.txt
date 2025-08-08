@@ -4,6 +4,6 @@ bs4
 telethon
 pillow
 aiohttp
-duckduckgo_search
+ddgs
 streamlit
 python-dotenv
