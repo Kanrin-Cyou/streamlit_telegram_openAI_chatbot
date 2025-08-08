@@ -40,7 +40,7 @@ Then you may add it to a group chat, However, you still need to send the passwor
 5. Install dependencies:
 `pip3 install -r requirements.txt`
 6. Start the local server:
-`streamlit run main.py`
+`streamlit run streamlit_app.py`
 
 ## Showcase
 

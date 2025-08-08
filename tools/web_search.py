@@ -1,9 +1,10 @@
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 from tools.general_utils import async_web_crawler
 from openai import AsyncOpenAI
 import asyncio
 import time
 import os
+from tools.decorator import tool
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -41,7 +42,22 @@ async def website_evaluate(web_snippet, keywords, question):
         return True
     else:
         return False
-
+    
+@tool(
+    name = "web_search",
+    description = "Use web search engine to get the content of websites related to the keyword, and return the content of these websites. Use this function when user input has a keyword. If you cannot find the answer, just reply cannot find the answer", 
+    parameters = {
+        "type": "object",
+        "properties": {
+            "keywords": {"type": "string"},
+            "question": {"type": "string", "description": "The question to be answered based on the search results, use the same language as the keywords."},
+        },
+        "required": ["keywords", "question"],
+        "additionalProperties": False
+    },
+    strict = True,
+    display_name = "🛜 web_search"
+)
 async def web_search(keywords, question):
     """
     Search the internet for the given keywords and return the content.
