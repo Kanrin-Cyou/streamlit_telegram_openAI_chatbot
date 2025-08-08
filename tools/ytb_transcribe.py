@@ -3,13 +3,34 @@ import re
 import subprocess
 import tempfile
 import shutil
+from typing import List, Tuple
+import time
+import random
 from openai import OpenAI
+from tools.decorator import tool
 
 from dotenv import load_dotenv
 load_dotenv()
 openai = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
+@tool(
+    name = "ytb_transcribe",
+    description = "From YouTube video to extract transcription or audio and transcript it to text.",
+    parameters = {
+        "type": "object",
+        "properties": {
+            "url": {"type": "string"}
+        },
+        "required": ["url"],
+        "additionalProperties": False
+        },
+    strict = True,
+    display_name = "📺 Youtube Transcribe"
+)
 def ytb_transcribe(url) -> str:
+
+    check_yt_dlp()
+    update_yt_dlp()
 
     tmpdir_audio = None
     tmpdir_script = None
@@ -23,7 +44,7 @@ def ytb_transcribe(url) -> str:
         print(f"Downloaded, transcription is saved at temprorary path: {tmpdir_script}")
         print(script_files, tmpdir_script)
 
-        if(len(script_files)==0):
+        if(len(script_files) == 0):
             download_task = download_youtube_audio(url)
             audio_files, tmpdir_audio = download_task
             print(f"Downloaded, audio is saved at temprorary path:: {tmpdir_audio}")
@@ -38,7 +59,8 @@ def ytb_transcribe(url) -> str:
                     )
                 transcription = transcription.text.strip()
         else:
-            transcription = srt_to_plain_text(script_files[0])
+            print("understanding")
+            transcription = srt_to_plain_text(script_files)
         print(transcription)
         return(transcription)
 
@@ -71,9 +93,6 @@ def update_yt_dlp():
 
 def download_youtube_audio(url):
 
-    check_yt_dlp()
-    update_yt_dlp()
-
     tmpdir = tempfile.mkdtemp(prefix="yt_dl_")
     outtpl = os.path.join(tmpdir, "%(title).15s.%(ext)s")
 
@@ -103,37 +122,77 @@ def srt_to_plain_text(filepath: str, joiner: str = " ") -> str:
             lines.append(line)
     return joiner.join(lines)
 
+def list_subs(url: str) -> Tuple[bool, str]:
+
+    p = subprocess.run(
+        ["yt-dlp", "--list-subs", url],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
+    if p.returncode != 0:
+        return None, None
+
+    lines = (p.stdout or p.stderr).splitlines()
+    manual, auto = set(), set()
+    section = None
+
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            continue
+        # 切换区块
+        if line.startswith("[info] Available automatic captions"):
+            section = "auto"
+            continue
+        if line.startswith("[info] Available subtitles"):
+            section = "manual"
+            continue
+        # 跳过表头
+        if section is None or line.lower().startswith(("language", "name", "formats")):
+            continue
+        # 取语言码
+        code = line.split()[0]
+        if section == "manual":
+            manual.add(code)
+        else:  # auto
+            auto.add(code)
+
+    priority = ["en", "ja", "zh", "zh-CN", "zh-TW"]
+
+    if manual is not []:
+        for lang in priority:
+            if lang in manual:
+                return True, lang
+    if auto is not []:
+        for lang in auto:
+            if lang.endswith("-orig"):
+                return False, lang
+    return None, ""
+
+
 def download_youtube_subtitles(
     url: str,
-    langs: str = "en,ja,zh-Hans,zh-Hant,zh-TW",
-    write_sub: bool = True,
-    write_auto_sub: bool = True,
-    convert_srt: bool = True
-) -> tuple[list[str], str]:  
-    """
-    Download YouTube subtitles, returning (subtitle file list, temporary directory path).
-    """
+) -> Tuple[str, str]:
 
-    check_yt_dlp()
-    update_yt_dlp()
+    is_manual_sub, sub = list_subs(url)
+    if is_manual_sub is None:
+        return "", None
+    print(f"Subtitles found: {sub}, is_manual_sub: {is_manual_sub}")
 
-    tmpdir = tempfile.mkdtemp(prefix="yt_subs_")
+    tmpdir = tempfile.mkdtemp(prefix="yt_sub_")
     outtpl = os.path.join(tmpdir, "%(title).15s.%(ext)s")
 
-    cmd = [
-        "yt-dlp",
-        url,
-        "--skip-download",         
-        "-o", outtpl,             
-    ]
-    if write_sub:
-        cmd.append("--write-sub")
-    if write_auto_sub:
-        cmd.append("--write-auto-sub")
 
-    cmd += ["--sub-lang", langs]
-    if convert_srt:
-        cmd += ["--convert-subs", "srt"]
+    cmd = [
+        "yt-dlp", url,
+        "--skip-download",
+        "--sub-lang", sub,
+        "-o", outtpl,
+    ]
+    if is_manual_sub:
+        cmd.append("--write-sub")
+    else:
+        cmd.append("--write-auto-sub")
+    cmd += ["--convert-subs", "srt"]
 
     print(cmd)
     p = subprocess.run(
@@ -145,11 +204,11 @@ def download_youtube_subtitles(
 
     if p.returncode != 0:
         shutil.rmtree(tmpdir, ignore_errors=True)
-        raise RuntimeError(f"Fail to Download: \n{p.stderr.strip()}")
+        raise RuntimeError(f"Subtitles download failed:\n{p.stderr.strip()}")
 
     files = []
     for fn in os.listdir(tmpdir):
         files.append(os.path.join(tmpdir, fn))
-
-    return files, tmpdir
+    print(f"Downloaded subtitles: {files}")
+    return files[0], tmpdir
 
