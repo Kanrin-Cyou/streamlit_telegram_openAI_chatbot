@@ -4,12 +4,13 @@ import json
 from openai import AsyncOpenAI
 from hist import hist_handler
 from tools.general_utils import get_current_time
-from tools.tools_description import tools_description, call_function
+from tools.tools_description import call_function
+from tools.decorator import REGISTERED_TOOL_DESCRIPTIONS
 
 from dotenv import load_dotenv
-
 load_dotenv()
 openai = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+tools_description = REGISTERED_TOOL_DESCRIPTIONS
 
 def assemble_photo_request(prompt_messages, user_message, photo):
     if photo is not None:
