@@ -37,7 +37,7 @@ async def reasoning_llm(user_message, hist_input, photo=None):
     short_term_memory, long_term_memory = await hist_handler(user_message, hist_input)
 
     stream = await openai.responses.create(
-        model="o4-mini",
+        model="gpt-5",
         input= short_term_memory + prompt_messages,
         reasoning={
             "effort": "high",
@@ -61,31 +61,28 @@ async def llm(user_message, hist_input, photo=None):
     prompt_messages = []
     tool_used = []
     short_term_memory, long_term_memory = await hist_handler(user_message, hist_input)
-
-    prompt_messages.append({
-        "role": "system",
-        "content": prompt,
-    })
-
-    prompt_messages.append({
-        "role": "system",
-        "content": f"Current Tokyo time is {get_current_time()}",
-    })
     
     prompt_messages = assemble_photo_request(prompt_messages, user_message, photo)
 
     print(short_term_memory + prompt_messages)
 
     stream = await openai.responses.create(
-        model="gpt-4.1-mini",
-        temperature=0.1,
+        model="gpt-5-mini",
+        text={
+            "verbosity": "medium"
+        },
+        reasoning={
+            "effort": "medium"
+        },
+        instructions= f"Current Tokyo time is {get_current_time()}" + prompt,
         input= short_term_memory + prompt_messages,
+        tools= tools_description + [{ "type": "web_search_preview" }],
         stream=True,
-        tools= tools_description,
     )
-    
+    print(stream)
     final_tool_calls = []
     async for event in stream:
+        print(event.type)
         if event.type == 'response.content_part.added':
             # No Tool is needed, the response is the answer, thus directly return the stream object
             return stream, tool_used
@@ -100,32 +97,42 @@ async def llm(user_message, hist_input, photo=None):
 
     tool_used = []
     for tool_call in final_tool_calls:
+        print(tool_call.type)
+        if tool_call.type == "reasoning":
+            prompt_messages.append(tool_call)
+        if tool_call.type == "function_call":
+            call_id = tool_call.call_id
+            name = tool_call.name
+            arguments = tool_call.arguments
+            args = json.loads(arguments)
+            if name == "web_search":
+                result = await call_function(name, args)                                                         
+            else:
+                result = call_function(name, args)
+            
+            prompt_messages.append(tool_call)
+            prompt_messages.append({
+                "type": "function_call_output",
+                "call_id": call_id,
+                "output": str(result)
+            })
 
-        call_id = tool_call.call_id
-        name = tool_call.name
-        arguments = tool_call.arguments
-
-        args = json.loads(arguments)
-        if name == "web_search":
-            result = await call_function(name, args)                                                         
-        else:
-            result = call_function(name, args)
-        
-        prompt_messages.append(tool_call)
-        prompt_messages.append({
-            "type": "function_call_output",
-            "call_id": call_id,
-            "output": str(result)
-        })
-
-        tool_used.append({"name":f"{name}", "arguments":f"{arguments}"})
-        print(f"Calling function: {name} with arguments: {arguments}")
-        
+            tool_used.append({"name":f"{name}", "arguments":f"{arguments}"})
+            print(f"Calling function: {name} with arguments: {arguments}")
+    
     stream = await openai.responses.create(
-        model="gpt-4.1-mini",
+        model="gpt-5-mini",
         input= long_term_memory + short_term_memory + prompt_messages,
-        temperature=0.3,
+        instructions= "Respond to the user with the best answer based on the provided information. You cannot use any tools, just answer the question. When the user asks next question, you can use tools again.",
+        text={
+            "verbosity": "medium"
+        },
+        reasoning={
+            "effort": "medium"
+        },
         stream=True
-    )                
+    )
+
+    print(stream)
     
     return stream, tool_used
