@@ -204,12 +204,15 @@ async def gpt(event):
                     delta = ""
                 temp_msg += delta
                 msg_queue = []
-                if len(temp_msg) > 4000:
+
+                if len(temp_msg) > 3000:
                     # Telegram message size limit is 4096 characters
-                    response_list = textwrap.fill(temp_msg, width=4000)
-                    msg_queue.append(response_list[0])                                      
-                    temp_msg = response_list[1]                    
-                    session = await client.send_message(CHAT_ID, " ", parse_mode="md")                                    
+                    response_list = textwrap.fill(temp_msg, width=3000)
+                    msg_queue.append(response_list[0])
+                    temp_msg = response_list[1]
+                    session = await client.send_message(CHAT_ID, temp_msg, parse_mode="md")
+                    await asyncio.sleep(0.5)                                  
+                    previous_total_length = 0 
 
                 if len(temp_msg) - previous_total_length >= update_threshold:
                     try:
@@ -222,8 +225,8 @@ async def gpt(event):
         try:
             if tools:
                 temp_msg = temp_msg + "\n\n" + f"🔌 Module Used: {tool_msg_beautify(tools)}"
-            if len(temp_msg) > 4000:
-                response_list = textwrap.fill(temp_msg, width=4000)
+            if len(temp_msg) > 3000:
+                response_list = textwrap.fill(temp_msg, width=3000)
                 await session.edit(response_list[0])
                 await client.send_message(CHAT_ID, response_list[1], parse_mode="md")   
             else:                
