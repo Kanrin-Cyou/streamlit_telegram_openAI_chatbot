@@ -7,7 +7,7 @@ from telethon import TelegramClient, events
 from telethon.tl.custom import Button
 from PIL import Image
 from llm import llm
-from hist import read_history, write_history, encode_image
+from hist import read_history, write_history, clear_history, encode_image
 from tools.tools_description import tool_msg_beautify
 from tools.general_utils import get_current_time
 import textwrap
@@ -77,6 +77,20 @@ async def start(event):
         text = "Welcome to OpenAI API ChatBot 🤖！\n\nPlease input your password"
         await client.send_message(SENDER_ID, text, parse_mode="md")
 
+@client.on(events.NewMessage(pattern='(?i)/empty'))
+async def empty_history(event):
+    sender = await event.get_sender()
+    SENDER_ID = sender.id
+    verified_users = read_verified_users()
+    
+    if SENDER_ID in verified_users:
+        clear_history(SENDER_ID, SENDER_ID)
+        text = "Your chat history has been cleared. You can start a new conversation now."
+        await client.send_message(SENDER_ID, text, parse_mode="md")
+    else:
+        text = "Welcome to OpenAI API ChatBot 🤖！\n\nPlease input your password"
+        await client.send_message(SENDER_ID, text, parse_mode="md")
+
 # Handling password verification
 @client.on(events.NewMessage)
 async def handle_password(event):
@@ -131,7 +145,7 @@ async def gpt(event):
             return
         
         session = await client.send_message(CHAT_ID, "Thinking ...", parse_mode="md")
-        if event.is_reply:            
+        if event.is_reply:
             reply = await event.get_reply_message()
             if reply.photo:
                 file_path = await reply.download_media()
@@ -152,6 +166,19 @@ async def gpt(event):
                     "role": "user",
                     "content": request
                 }
+        elif event.photo:
+            file_path = await event.download_media()
+            file_path = ensure_supported_image(file_path)
+            photo = encode_image(file_path)
+            user_message = {
+                "role": "user",
+                "content": [
+                    {"type": "input_text", "text": request},
+                    {"type": "input_image",
+                        "image_url": file_path,
+                    }
+                ],
+            }
         else:
             user_message = {
                 "role": "user",

@@ -29,6 +29,11 @@ def write_history(user_id: str, hist: list):
     with open(f"hist_{user_id}.json","w") as f:
         json.dump(hist,f,indent=2,ensure_ascii=False)
 
+def clear_history(user_id: str, chat_id: str):
+    fn = f"history/{user_id}/hist_{chat_id}.json"
+    if os.path.exists(fn):
+        os.remove(fn)
+
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8") 
