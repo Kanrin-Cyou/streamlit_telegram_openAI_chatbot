@@ -129,7 +129,7 @@ def assemble_photo_request(prompt_messages, user_message, photo):
         prompt_messages.append({
             "role": "user",
             "content": [
-                { "type": "text_content", "text": user_message},
+                { "type": "input_text", "text": user_message},
                 {
                     "type": "input_image",
                     "image_url": f"data:image/jpeg;base64,{photo}",
