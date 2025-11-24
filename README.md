@@ -1,5 +1,7 @@
 ## Introduction
 
+Default User is admin with password admin, for details please check auth_tools page.
+
 This project started as a personal tool that I created for my own use and to share with friends. As more functions were added and I noticed that no similar project existed on GitHub, I decided to publish it.
 
 Key features include:
