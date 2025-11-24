@@ -47,7 +47,7 @@ def get_current_time(time_zone_hours=9) -> str:
 
 @tool(
     name = "web_crawler",
-    description = "Get a website content by using request and BeautifulSoup. Use this function when user input has a url.", 
+    description =  "Get a website text by using request and BeautifulSoup. Use this function when user input has a url. Get a website text by using request and BeautifulSoup. Use this function when user input has a url. Do not use for youtube or weixin or wechat website.",
     parameters = {
         "type": "object",
         "properties": {

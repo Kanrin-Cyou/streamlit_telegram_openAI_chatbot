@@ -7,3 +7,4 @@ aiohttp
 ddgs
 streamlit
 python-dotenv
+streamlit_authenticator

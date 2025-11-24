@@ -2,8 +2,8 @@ import streamlit as st
 import asyncio
 import time
 import json
-from llm import llm, reasoning_llm
-from hist import read_history, write_history, encode_image
+from llm import llm
+from hist import read_history, write_history, encode_image, update_profile
 from tools.tools_description import tool_msg_beautify
 import sys
 from io import BytesIO
@@ -60,8 +60,6 @@ async def main() -> int:
             st.session_state.active_chat = st.session_state.chatbox_names[0]
         if 'reasoning' not in st.session_state:
             st.session_state.reasoning = False
-        if 'reasoning_checkbox' not in st.session_state:
-            st.session_state.reasoning_checkbox = False
 
         # 2. Sidebar: list chatbox name items as a column of buttons        
         
@@ -95,13 +93,7 @@ async def main() -> int:
                 st.session_state.chatbox_names = read_chat_list(st.session_state.name)
                 st.session_state.active_chat = st.session_state.chatbox_names[0]
                 st.session_state.chat_history = read_history(st.session_state.name, st.session_state.active_chat)
-                st.rerun()
-
-            def reasoning_check():
-                body_placeholder.empty()
-                st.session_state.reasoning = st.session_state.reasoning_checkbox
-
-            st.checkbox(label="Reasoning Mode", key="reasoning_checkbox", on_change = reasoning_check)            
+                st.rerun()         
 
         # 3. Chatbox
         user_input = st.chat_input("Type a message...", accept_file=True, file_type=["jpg", "jpeg", "png"]) 
@@ -177,10 +169,7 @@ async def main() -> int:
 
                     # 3. obtain streaming response
                     start = time.time()
-                    if st.session_state.reasoning:
-                        stream, tools = await reasoning_llm(user_input.text, st.session_state.chat_history, photo)
-                    else:
-                        stream, tools = await llm(user_input.text, st.session_state.chat_history, photo)
+                    stream, tools = await llm(user_input.text, st.session_state.name, st.session_state.chat_history, photo)
                     print("---")
                     print(f"Starting Response takes {time.time() - start}s")
                     print("---")
@@ -216,13 +205,16 @@ async def main() -> int:
 
                 st.session_state.chat_history.extend([
                     hist_user_message,
-                    {          
+                    {
                         "role": "assistant",
                         "content": history_content
                     }
                 ])
 
                 write_history(st.session_state.name, st.session_state.active_chat, st.session_state.chat_history)
+
+                # Update user profile after saving complete conversation
+                await update_profile(st.session_state.name, st.session_state.chat_history)
 
 if __name__ == "__main__":
     sys.exit(asyncio.run(main()))

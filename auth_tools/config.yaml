@@ -1,0 +1,10 @@
+cookie:
+  expiry_days: 30
+  key: cookie_key
+  name: cookie_name
+credentials:
+  usernames:
+    admin:
+      email: admin@example.com
+      name: admin
+      password: $2b$12$4rp1gw6hFECdCrDfJ8cjjOck.fd8SoQ2vzSruC/lKCHHwIfk8SpR6

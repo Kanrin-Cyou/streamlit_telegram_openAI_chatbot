@@ -3,3 +3,6 @@ services:
   telbot:
     image: gptbot:latest
     command: python -u ./bot.py
+    volumes:
+      - "/history:/history"
+    restart: unless-stopped

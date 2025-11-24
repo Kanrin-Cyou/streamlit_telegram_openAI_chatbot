@@ -158,11 +158,11 @@ def list_subs(url: str) -> Tuple[bool, str]:
 
     priority = ["en", "ja", "zh", "zh-CN", "zh-TW"]
 
-    if manual is not []:
+    if manual != []:
         for lang in priority:
             if lang in manual:
                 return True, lang
-    if auto is not []:
+    if auto != []:
         for lang in auto:
             if lang.endswith("-orig"):
                 return False, lang

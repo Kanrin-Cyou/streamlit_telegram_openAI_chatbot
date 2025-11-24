@@ -7,7 +7,7 @@ from telethon import TelegramClient, events
 from telethon.tl.custom import Button
 from PIL import Image
 from llm import llm
-from hist import read_history, write_history, clear_history, encode_image
+from hist import read_history, write_history, clear_history, encode_image, update_profile
 from tools.tools_description import tool_msg_beautify
 from tools.general_utils import get_current_time
 import textwrap
@@ -54,7 +54,7 @@ def ensure_supported_image(file_path):
             print(f"converted image to {new_file_path}")
             return new_file_path
         except Exception as e:
-            raise Exception(f"Faile to conver image: {str(e)}")
+            raise Exception(f"Failed to convert image: {str(e)}")
     return file_path
 
 def encode_image(image_path):
@@ -111,7 +111,7 @@ async def handle_password(event):
         text = "Correct Password! You now can use the Bot.😊"
         await client.send_message(SENDER_ID, text, parse_mode="md")
     else:
-        text = "Wrong Passwrod. Please try again or contact bot owner."
+        text = "Wrong Password. Please try again or contact bot owner."
         await client.send_message(SENDER_ID, text, parse_mode="md")
 
 
@@ -121,7 +121,7 @@ async def handle_password(event):
 #@client.on(events.NewMessage(pattern='@bot_name')) 
 #if you want to handle messages that mention the bot, so you can added it to a group chat.
 #However, you still need to send the password directly to the bot in a private chat.
-@client.on(events.NewMessage)
+@client.on(events.NewMessage(pattern=r'^(?!/).*'))
 async def gpt(event):
     try:        
         sender = await event.get_sender()
@@ -129,7 +129,7 @@ async def gpt(event):
         CHAT_ID = event.message.peer_id
         photo = None
 
-        hist = read_history(CHAT_ID)
+        hist = read_history(SENDER, SENDER)
 
         if not is_user_verified(SENDER):
             text = "Please verify your password first, send /start to start."
@@ -186,16 +186,23 @@ async def gpt(event):
             }
         
         start = time.time()
-        stream, tools = await llm(request, hist, photo)
+        stream, tools = await llm(request, SENDER, hist, photo)
         end = time.time()
-        
+
         print("---")
-        print(f"Starting Response takes ${end-start}s")
+        print(f"Starting Response takes {end-start}s")
         print("---")
 
+        # Immediately update message to show streaming has started
+        try:
+            await session.edit("💬 ")
+        except Exception:
+            pass  # Ignore edit failures
+
         temp_msg = ""
-        previous_total_length = 0 
+        previous_total_length = 0
         update_threshold = 100 # update every 100 characters
+        msg_queue = []
 
         async for event in stream:
             if event.type == "response.output_text.delta":
@@ -203,7 +210,6 @@ async def gpt(event):
                 if delta is None:
                     delta = ""
                 temp_msg += delta
-                msg_queue = []
 
                 if len(temp_msg) > 3000:
                     # Telegram message size limit is 4096 characters
@@ -211,8 +217,8 @@ async def gpt(event):
                     msg_queue.append(response_list[0])
                     temp_msg = response_list[1]
                     session = await client.send_message(CHAT_ID, temp_msg, parse_mode="md")
-                    await asyncio.sleep(0.5)                                  
-                    previous_total_length = 0 
+                    await asyncio.sleep(0.5)
+                    previous_total_length = 0
 
                 if len(temp_msg) - previous_total_length >= update_threshold:
                     try:
@@ -221,15 +227,15 @@ async def gpt(event):
                         print("Streaming Message Error:", e)
                     previous_total_length = len(temp_msg)
                     await asyncio.sleep(0.5)
-                
+
         try:
             if tools:
                 temp_msg = temp_msg + "\n\n" + f"🔌 Module Used: {tool_msg_beautify(tools)}"
             if len(temp_msg) > 3000:
                 response_list = textwrap.fill(temp_msg, width=3000)
                 await session.edit(response_list[0])
-                await client.send_message(CHAT_ID, response_list[1], parse_mode="md")   
-            else:                
+                await client.send_message(CHAT_ID, response_list[1], parse_mode="md")
+            else:
                 await session.edit(temp_msg)
             msg_queue.append(temp_msg)
         except Exception as e:
@@ -240,13 +246,16 @@ async def gpt(event):
             response = response + item
         hist.extend([
             user_message,
-            {          
+            {
                 "role": "assistant",
                 "content": f"Time:{get_current_time()} \n {response}"
             }
-        ])            
+        ])
 
-        write_history(CHAT_ID, hist)
+        write_history(SENDER, SENDER, hist)
+
+        # Update user profile after saving complete conversation
+        await update_profile(SENDER, hist)
         
     except Exception as e:
         await client.send_message(CHAT_ID, f"Sorry, error: {str(e)}", parse_mode="md")
